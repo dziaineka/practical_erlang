@@ -7,8 +7,13 @@
 
 %% implement lists:member/2
 %% http://www.erlang.org/doc/man/lists.html#member-2
-member(Elem, List) ->
-    false.
+member(_Elem, []) ->
+    false;
+member(Elem, [Head|Tale]) ->
+    case Head == Elem of
+        false -> member(Elem, Tale);
+        true -> true
+    end.
 
 
 member_test() ->
@@ -23,8 +28,15 @@ member_test() ->
 %% implement lists:filter/2
 %% http://www.erlang.org/doc/man/lists.html#filter-2
 filter(Pred, List) ->
-    List.
+    filter(Pred, List, []).
 
+filter(_Pred, [], FilteredList) ->
+    task_2:reverse(FilteredList);
+filter(Pred, [Head|Tale], FilteredList) ->
+    case Pred(Head) of
+        false -> filter(Pred, Tale, FilteredList);
+        true -> filter(Pred, Tale, [Head|FilteredList])
+    end.
 
 filter_test() ->
     F = fun(Val) -> Val rem 5 =:= 0 end,
