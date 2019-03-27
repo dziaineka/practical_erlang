@@ -4,82 +4,73 @@
 
 -record(result, {trimmed_string, another_letter_met, storage}).
 
+% trim spaces
 trim(String) ->
-    trim(String, " ").
+    trim(String, 32).
 
+% trim specifyed char
 trim(String, Char) ->
     trim(String,
          Char,
          #result{trimmed_string=[], another_letter_met=false, storage=[]}).
 
-
-trim([], [CharNumber], #result{trimmed_string=Trimmed})
-when is_number(CharNumber) ->
+% string to trim is empty
+trim([], Char, #result{trimmed_string=Trimmed})
+when is_number(Char) ->
     lists:reverse(Trimmed);
 
-trim([CharNumber|Tail],
-     [CharNumber],
+% symbols matched and it's the beginning of the string
+trim([Char|Tail],
+     Char,
      #result{another_letter_met=false, storage=Storage})
-when is_number(CharNumber) ->
+when is_number(Char) ->
     trim(Tail,
-         [CharNumber],
+         Char,
          #result{trimmed_string=[], another_letter_met=false, storage=Storage});
 
+% first mismatched symbol
 trim([Head|Tail],
-     [CharNumber],
+     Char,
      #result{trimmed_string=Trimmed_string,
              another_letter_met=false,
              storage=Storage})
-when is_number(CharNumber) ->
+when is_number(Char) ->
     Another_letter_met = true,
     NewTrimmedStr = [Head|Trimmed_string],
 
     trim(Tail,
-         [CharNumber],
+         Char,
          #result{trimmed_string=NewTrimmedStr,
                  another_letter_met=Another_letter_met,
                  storage=Storage});
 
-trim([CharNumber|Tail],
-     [CharNumber],
+% dont delete chars in the middle of the string
+trim([Char|Tail],
+     Char,
      #result{trimmed_string=Trimmed_string,
              another_letter_met=true,
              storage=Storage})
-when is_number(CharNumber) ->
-    New_storage = [CharNumber|Storage],
+when is_number(Char) ->
+    New_storage = [Char|Storage],
 
     trim(Tail,
-         [CharNumber],
+         Char,
          #result{trimmed_string=Trimmed_string,
                  another_letter_met=true,
                  storage=New_storage});
 
+% another mismatching symbol has been met
 trim([Head|Tail],
-     [CharNumber],
-     #result{trimmed_string=Trimmed_string,
-             another_letter_met=true,
-             storage=[]})
-when is_number(CharNumber) ->
-    New_trimmed = [Head|Trimmed_string],
-    New_storage = [],
-
-    trim(Tail,
-         [CharNumber],
-         #result{trimmed_string=New_trimmed,
-                 another_letter_met=true,
-                 storage=New_storage});
-
-trim([Head|Tail],
-     [CharNumber],
+     Char,
      #result{trimmed_string=Trimmed_string,
              another_letter_met=true,
              storage=Storage})
-when is_number(CharNumber) ->
-    New_trimmed = [Head|[Storage|Trimmed_string]],
+when is_number(Char) ->
+    New_trimmed = [Head|Storage ++ Trimmed_string],
     New_storage = [],
 
     trim(Tail,
-         [CharNumber],
+         Char,
          #result{trimmed_string=New_trimmed,
                  another_letter_met=true,
                  storage=New_storage});
