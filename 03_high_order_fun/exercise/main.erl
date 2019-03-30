@@ -59,8 +59,35 @@ sample_champ() ->
     ].
 
 
+get_players_sums({player, _Name, Age, Rating, _Health},
+                 {NumPlayers, SumAge, SumRating}) ->
+    {NumPlayers + 1, SumAge + Age, SumRating + Rating}.
+
+
+sum_champ_data({team, _Name, Players},
+               {NumTeams, NumPlayers, SumAge, SumRating}) ->
+    {TeamNumPlayers, TeamSumAge, TeamSumRating} = lists:foldl(
+                                                    fun get_players_sums/2,
+                                                    {0, 0, 0},
+                                                    Players
+                                                ),
+
+    {
+        NumTeams + 1,
+        NumPlayers + TeamNumPlayers,
+        SumAge + TeamSumAge,
+        SumRating + TeamSumRating
+    }.
+
+
 get_stat(Champ) ->
-    {0, 0, 0.0, 0.9}.
+    {NumTeams, NumPlayers, SumAge, SumRating} = lists:foldl(
+                                                    fun sum_champ_data/2,
+                                                    {0, 0, 0, 0},
+                                                    Champ
+                                                ),
+
+    {NumTeams, NumPlayers, SumAge/NumPlayers, SumRating/NumPlayers}.
 
 
 get_stat_test() ->
