@@ -95,15 +95,15 @@ get_stat_test() ->
     ok.
 
 
-remove_sick_players({team, _TeamName, Players}) ->
+remove_sick_players({team, TeamName, Players}) ->
     FilteredPlayers = lists:filter(
-        fun({player, _Name, _Age, _Rating, Health}) -> Health > 50 end,
+        fun({player, _Name, _Age, _Rating, Health}) -> Health >= 50 end,
         Players
     ),
 
     case length(FilteredPlayers) > 5 of
         false -> false;
-        true -> {true, FilteredPlayers}
+        true -> {true, {team, TeamName, FilteredPlayers}}
     end.
 
 
