@@ -95,8 +95,20 @@ get_stat_test() ->
     ok.
 
 
+remove_sick_players({team, _TeamName, Players}) ->
+    FilteredPlayers = lists:filter(
+        fun({player, _Name, _Age, _Rating, Health}) -> Health > 50 end,
+        Players
+    ),
+
+    case length(FilteredPlayers) > 5 of
+        false -> false;
+        true -> {true, FilteredPlayers}
+    end.
+
+
 filter_sick_players(Champ) ->
-    Champ.
+    lists:filtermap(fun remove_sick_players/1, Champ).
 
 
 filter_sick_players_test() ->
