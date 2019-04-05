@@ -37,20 +37,79 @@ init() ->
 
 
 add_idea(Id, Title, Author, Rating, Description) ->
+    Idea = #idea{
+        id = Id,
+        title = Title,
+        author = Author,
+        rating = Rating,
+        description = Description
+    },
+
+    ets:insert(great_ideas_table, Idea),
     ok.
 
 
 get_idea(Id) ->
-    not_found.
+    Ideas = ets:lookup(great_ideas_table, Id),
+
+    case Ideas of
+        [{idea, Id, Title, Author, Rating, Description} | _] ->
+            {
+                ok,
+                #idea{
+                    id = Id,
+                    title = Title,
+                    author = Author,
+                    rating = Rating,
+                    description = Description
+                }
+            };
+
+        _ -> not_found
+    end.
 
 
 ideas_by_author(Author) ->
-    [].
+    ets:match_object(great_ideas_table, {idea, '_', '_', Author, '_', '_'}).
 
 
 ideas_by_rating(Rating) ->
-    [].
+    Query = ets:fun2ms(
+        fun ({idea, Id, Title, Author, IdeaRating, Description})
+            when IdeaRating >= Rating ->
+                {idea, Id, Title, Author, IdeaRating, Description}
+        end
+    ),
+
+    ets:select(great_ideas_table, Query).
 
 
 get_authors() ->
-    [].
+    AuthorsMap = ets:foldl(
+        fun ({idea, _, _, Author, _, _}, AuthorsAcc) ->
+            AuthorsAcc#{Author => maps:get(Author, AuthorsAcc, 0) + 1}
+        end,
+        maps:new(),
+        great_ideas_table
+    ),
+
+    AuthorsList = maps:to_list(AuthorsMap),
+
+    lists:usort(
+        fun
+            ({Author1, Amount}, {Author2, Amount}) ->
+            if
+                Author1 > Author2 -> false;
+                true -> true
+            end;
+
+            ({_Author1, Amount1}, {_Author2, Amount2}) ->
+            if
+                Amount1 < Amount2 -> false;
+                true -> true
+            end
+        end,
+        AuthorsList
+    ).
+
+
