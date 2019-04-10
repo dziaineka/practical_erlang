@@ -20,9 +20,11 @@ count_words_thread(File) ->
 count_words(File) ->
     case file:read_file(File) of
         {ok, Content} ->
-            WordsList = binary:split(Content,
-                                    [<<" "/utf8>>, <<"\n"/utf8>>],
-                                    [global]),
+            WordsList = binary:split(
+                Content,
+                [<<" ">>, <<"\n">>, <<"\r">>],
+                [global]
+            ),
 
             WordsAmount = get_word_amount(WordsList, #{}),
             collector ! {amount, WordsAmount};
@@ -50,7 +52,7 @@ start(Files) ->
 collect_lists(Length, StartAmount, ServerPid) ->
     if
         Length == 0 ->
-            io:format("TestAmount: ~p~n", [StartAmount]),
+            % io:format("TestAmount: ~p~n", [StartAmount]),
             ServerPid ! {total_amount, StartAmount};
 
         true ->
