@@ -7,6 +7,8 @@
 
 -export([loop/1, handle_call/3]).
 
+-define(MAX_ROOMS, 5).
+
 
 loop(State) ->
     io:format("Current state: ~p~n", [State]),
@@ -96,7 +98,7 @@ handle_call(create_room, RoomName, State) ->
             ID = lists:max(KeysList) + 1
     end,
 
-    CanAppend = maps:size(State) < 5,
+    CanAppend = maps:size(State) < ?MAX_ROOMS,
 
     if
         CanAppend ->
