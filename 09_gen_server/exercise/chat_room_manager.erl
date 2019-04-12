@@ -56,25 +56,31 @@ start() ->
     spawn(?MODULE, loop, [InitialState]).
 
 
-user_operation(Action, {RoomId, UserName}, State) ->
-    case maps:find(RoomId, State) of
-        {ok, {room, Name, Users, Messages}} ->
+room_content_operation({Action, UserShouldExist, NegativeResult},
+                       {RoomId, UserName},
+                       State) ->
+    Operation = fun
+        ({room, Name, Users, Messages}) ->
             case lists:member(UserName, Users) of
-                false ->
+                UserShouldExist ->
                     State2 = State#{
-                        RoomId => {
-                            room,
-                            Name,
-                            Action(UserName, Users),
-                            Messages
-                        }
+                        RoomId => Action({room, Name, Users, Messages})
                     },
 
                     {ok, ok, State2};
 
-                true ->
-                    {error, user_is_in_room}
-            end;
+                _ ->
+                    {error, NegativeResult}
+            end
+    end,
+
+    room_operation(Operation, RoomId, State).
+
+
+room_operation(Action, RoomId, State) ->
+    case maps:find(RoomId, State) of
+        {ok, Room} ->
+            Action(Room);
 
         error ->
             {error, room_not_found}
@@ -129,12 +135,46 @@ handle_call(get_rooms, _, State) ->
     };
 
 handle_call(add_user, {RoomId, UserName}, State) ->
-    Adding = fun (Name, Users) -> [Name | Users] end,
-    user_operation(Adding, {RoomId, UserName}, State);
+    Adding = fun ({room, RoomName, Users, Messages}) ->
+        {room, RoomName, [UserName | Users], Messages} end,
+
+    room_content_operation({Adding, false, user_is_in_room},
+                           {RoomId, UserName},
+                           State);
 
 handle_call(remove_user, {RoomId, UserName}, State) ->
-    Removing = fun (Name, Users) -> lists:delete(Name, Users) end,
-    user_operation(Removing, {RoomId, UserName}, State).
+    Removing = fun ({room, RoomName, Users, Messages}) ->
+        {room, RoomName, lists:delete(UserName, Users), Messages}
+    end,
+
+    room_content_operation({Removing, true, user_not_in_room},
+                           {RoomId, UserName},
+                           State);
+
+handle_call(get_users_list, RoomId, State) ->
+    Fun = fun
+        ({room, _Name, Users, _Messages}) ->
+            {ok, {ok, Users}, State}
+    end,
+
+    room_operation(Fun, RoomId, State);
+
+handle_call(send_message, {RoomId, UserName, Message}, State) ->
+    Fun = fun ({room, RoomName, Users, Messages}) ->
+        {room, RoomName, Users, [{UserName, Message} | Messages]}
+    end,
+
+    room_content_operation({Fun, true, user_not_in_room},
+                           {RoomId, UserName},
+                           State);
+
+handle_call(get_messages_history, RoomId, State) ->
+    Fun = fun
+        ({room, _Name, _Users, Messages}) ->
+            {ok, {ok, Messages}, State}
+    end,
+
+    room_operation(Fun, RoomId, State).
 
 
 create_room(Server, RoomName) ->
