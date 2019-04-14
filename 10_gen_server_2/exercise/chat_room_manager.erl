@@ -4,7 +4,7 @@
 -export([start_link/0,
          create_room/1, get_rooms/0,
          add_user/3, remove_user/2, get_users/1,
-         send_message/3,  get_history/1]).
+         send_message/3,  get_history/1, close_room/1]).
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
@@ -46,8 +46,8 @@ get_history(RoomPid) ->
     gen_server:call(?MODULE, {get_history, RoomPid}).
 
 
-% close_room() ->
-%     gen_server:call(?MODULE, {close_room, }).
+close_room(RoomPid) ->
+    gen_server:call(?MODULE, {close_room, RoomPid}).
 
 
 %%%%%%%% server side %%%%%%%%
@@ -121,7 +121,19 @@ handle_call({get_history, RoomPid}, _From, State) ->
         reply,
         room_operation(Getting, RoomPid, State#state.rooms),
         State
-    }.
+    };
+
+handle_call({close_room, RoomPid}, _From, State) ->
+    Rooms = State#state.rooms,
+
+    Closing = fun () ->
+        State#state{rooms = maps:remove(RoomPid, Rooms)}
+    end,
+
+    case room_operation(Closing, RoomPid, State#state.rooms) of
+        {error, Reason} -> {reply, {error, Reason}, State};
+        {state, NewRooms} -> {reply, ok, {state, NewRooms}}
+    end.
 
 
 handle_cast(_Msg, State) ->
