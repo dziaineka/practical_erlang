@@ -94,7 +94,7 @@ handle_call({add_message, Author, Text}, _From, State) ->
     {reply, ok, NewState};
 
 handle_call({get_history}, _From, State) ->
-    {reply, State#state.messages, State}.
+    {reply, lists:reverse(State#state.messages), State}.
 
 
 handle_cast(_Msg, State) ->
