@@ -21,7 +21,9 @@ init({UserId, UserName}) ->
             user_name=UserName
         },
 
-    lager:info("HELLO~n~p~n", [State]),
+    lager:info("INFO~n~p~n", [State]),
+    lager:warning("WARNING~n~p~n", [State]),
+    lager:error("ERROR~n~p~n", [State]),
     {ok, State}.
 
 handle_call(stop, _From, State) ->

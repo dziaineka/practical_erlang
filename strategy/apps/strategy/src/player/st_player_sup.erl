@@ -1,10 +1,4 @@
-%%%-------------------------------------------------------------------
-%% @doc strategy top level supervisor.
-%% @end
-%%%-------------------------------------------------------------------
-
--module(strategy_sup).
-
+-module(st_player_sup).
 -behaviour(supervisor).
 
 %% API
@@ -32,28 +26,19 @@ start_link() ->
 %% Child :: {Id,StartFunc,Restart,Shutdown,Type,Modules}
 init([]) ->
     SupervisorSpecification = #{
-        strategy => one_for_one,
+        strategy => simple_one_for_one,
         intensity => 10,
         period => 60},
 
     ChildSpecifications =
         [
             #{
-                id => st_player_sup_1,
-                start => {st_player_sup, start_link, []},
-                restart => permanent,
-                shutdown => 2000,
-                type => supervisor,
-                modules => [st_player_sup]
-            },
-
-            #{
-                id => st_player_storage,
-                start => {st_player_storage, start_link, []},
+                id => st_player_srv,
+                start => {st_player_srv, start_link, []},
                 restart => permanent,
                 shutdown => 2000,
                 type => worker,
-                modules => [st_player_storage]
+                modules => [st_player_srv]
             }
         ],
     {ok, {SupervisorSpecification, ChildSpecifications}}.
