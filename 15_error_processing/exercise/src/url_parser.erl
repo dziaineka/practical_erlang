@@ -5,167 +5,124 @@
 
 -spec parse(binary()) -> {ok, map()} | {error, term()}.
 parse(URL) ->
-    Parsers = [
+    Result = pipeline(URL, [
         fun get_protocol/1,
         fun get_domain/1,
-        fun get_year/1,
-        fun get_month/1,
-        fun get_day/1,
-        fun get_name/1,
-        fun get_parameters/1
-    ],
+        fun get_query/1,
+        fun get_date/1,
+        fun get_path/1
+    ]),
 
-    {_, Elements, Errors} = lists:foldl(
-        fun (Parser, {PartOfURL, Elements, Errors}) ->
-            case Parser(PartOfURL) of
-                {PartName, {ok, Result}, NewURL} ->
-                    {
-                        NewURL,
-                        Elements#{PartName => Result},
-                        Errors
-                    };
+    process_results(Result).
 
-                {PartName, {error, Reason}, _} ->
-                    {
-                        PartOfURL,
-                        Elements,
-                        Errors#{PartName => Reason}
-                    }
-            end
+
+pipeline(URL, Parsers) ->
+    lists:foldl(
+        fun
+            (Parser, {ok, PartOfURL, Result}) ->
+                case Parser(PartOfURL) of
+                    {PartName, {ok, Element}, NewURL} ->
+                        {
+                            ok,
+                            NewURL,
+                            Result#{PartName => Element}
+                        };
+
+                    {error, Reason} ->
+                        {error, Reason}
+                end;
+
+            (_Parser, {error, Reason}) ->
+                {
+                    error,
+                    Reason
+                }
         end,
-        {URL, #{}, #{}},
+        {ok, URL, #{}},
         Parsers
-    ),
-
-    process_results(Elements, Errors).
-
-
-capture(String, Pattern) ->
-    case re:run(String, Pattern) of
-        {match, [Captured]} ->
-            % io:format("~p~n~p~n", [String, Captured]),
-
-            SubString = binary:list_to_bin(
-                binary:bin_to_list(String, Captured)
-            ),
-
-            [_ | NewString] = re:replace(String, Pattern, <<>>),
-            {SubString, NewString};
-
-        nomatch ->
-            {not_found, String}
-    end.
-
-
-get_element(Element, String, RawPattern, {error, ErrorReason}) ->
-    {ok, Pattern} = re:compile(RawPattern, [caseless]),
-
-    case capture(String, Pattern) of
-        {not_found, NewString} ->
-            {Element, {error, ErrorReason}, NewString};
-
-        {Captured, NewString} ->
-            {Element, {ok, Captured}, NewString}
-    end;
-
-get_element(Element, String, RawPattern, {default, DafaultValue}) ->
-    {ok, Pattern} = re:compile(RawPattern, [caseless]),
-
-    case capture(String, Pattern) of
-        {not_found, NewString} ->
-            {Element, {ok, DafaultValue}, NewString};
-
-        {Captured, NewString} ->
-            {Element, {ok, Captured}, NewString}
-    end.
+    ).
 
 
 get_protocol(String) ->
-    Pattern = <<"(?<protocol>^\w+)(?:\:\/\/)">>,
-    % Pattern = <<"protocol">>,
-    get_element(protocol, String, Pattern, {error, invalid_protocol}).
-
-
-get_domain(String) ->
-    Pattern = <<"domain">>,
-    get_element(domain, String, Pattern, {error, invalid_domain}).
-
-
-get_year(String) ->
-    Pattern = <<"year">>,
-    get_element(year, String, Pattern, {default, <<>>}).
-
-
-get_month(String) ->
-    Pattern = <<"month">>,
-    get_element(month, String, Pattern, {default, <<>>}).
-
-
-get_day(String) ->
-    Pattern = <<"day">>,
-    get_element(day, String, Pattern, {default, <<>>}).
-
-
-get_name(String) ->
-    Pattern = <<"name">>,
-    get_element(name, String, Pattern, {default, <<>>}).
-
-
-get_parameters(String) ->
-    Pattern = <<"parameters">>,
-    get_element(parameters, String, Pattern, {default, <<>>}).
-
-
-process_results(Elements, Errors) ->
-    case maps:size(Errors) of
-        0 ->
-            process_elements(Elements);
+    case binary:split(String, <<"://">>) of
+        [Protocol, Rest] ->
+            {protocol, {ok, Protocol}, Rest};
 
         _ ->
-            {_Key, Value, _} = maps:next(maps:iterator(Errors)),
-            {error, Value}
+            {error, invalid_protocol}
     end.
 
 
-process_elements(Elements) ->
-    #{
-        protocol => maps:get(protocol, Elements),
-        domain => maps:get(domain, Elements),
-        path => get_path(Elements),
-        query => maps:get(parameters, Elements),
-        date => get_date(Elements)
-    }.
+get_domain(String) ->
+    case binary:split(String, <<"/">>) of
+        [Domain, Rest] ->
+            {domain, {ok, Domain}, Rest};
+
+        _ ->
+            {error, invalid_domain}
+    end.
 
 
-get_path(Elements) ->
-    lists:filter(
+get_query(String) ->
+    case binary:split(String, <<"?">>) of
+        [Path, Query] ->
+            {query, {ok, Query}, Path};
+
+        [Path] ->
+            {query, {ok, <<>>}, Path}
+    end.
+
+
+get_date(String) ->
+    case binary:split(String, <<"/">>, [global]) of
+        [Year, Month, Day | _Rest] ->
+            case date_valid(Year, Month, Day) of
+                {ok, Date} ->
+                    {date, {ok, Date}, String};
+
+                _ ->
+                    {date, {ok, undefined}, String}
+            end;
+
+        _ ->
+            {date, {ok, undefined}, String}
+    end.
+
+
+date_valid(BinYear, BinMonth, BinDay) ->
+    try
+        {Year, _} = string:to_integer(binary:bin_to_list(BinYear)),
+        {Month, _} = string:to_integer(binary:bin_to_list(BinMonth)),
+        {Day, _} = string:to_integer(binary:bin_to_list(BinDay)),
+
+        if
+            Month >= 1 andalso Month =< 12 andalso
+            Day >= 1 andalso Day =< 31 ->
+                {ok, {Year, Month, Day}};
+
+            true ->
+                error
+        end
+    catch
+        _ ->
+            error
+    end.
+
+
+get_path(String) ->
+    Path = lists:filter(
         fun
             (<<>>) -> false;
             (_) -> true
         end,
-        [
-            maps:get(year, Elements),
-            maps:get(month, Elements),
-            maps:get(day, Elements),
-            maps:get(name, Elements)
-        ]
-    ).
+        binary:split(String, <<"/">>, [global])
+    ),
+
+    {path, {ok, Path}, String}.
 
 
-get_date(Elements) ->
-    Year = maps:get(year, Elements),
-    Month = maps:get(month, Elements),
-    Day = maps:get(day, Elements),
-    DateUndefined = (Year == <<>> orelse Month == <<>> orelse Day == <<>>),
+process_results({error, Reason}) ->
+    {error, Reason};
 
-    if
-        DateUndefined ->
-            undefined;
-
-        true ->
-            {
-                binary:bin_to_list(Year),
-                binary:bin_to_list(Month),
-                binary:bin_to_list(Day)
-            }
-    end.
+process_results({ok, _, Result}) ->
+    {ok, Result}.
