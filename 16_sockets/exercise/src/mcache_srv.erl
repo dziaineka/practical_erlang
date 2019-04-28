@@ -167,13 +167,14 @@ process_command(Command) ->
 
 
 find_command(Command, Fun, Keyword) ->
-    case string:find(string:lowercase(Command), Keyword) of
-        nomatch ->
-            {nomatch, "UNKNOWN COMMAND"};
+    io:format("~p, ~p~n", [Keyword, Command]),
+    case lists:prefix(Keyword, Command) of
+        true ->
+            [_Operation, Parameters] = string:split(string:chomp(Command), " "),
+            Fun(Parameters);
 
         _ ->
-            [_Operation, Parameters] = string:split(string:chomp(Command), " "),
-            Fun(Parameters)
+            {nomatch, "UNKNOWN COMMAND"}
     end.
 
 
