@@ -12,6 +12,7 @@ start() ->
 
 
 start(_StartType, _StartArgs) ->
+    io:format("app mtcache started~n"),
     mcache_sup:start_link().
 
 

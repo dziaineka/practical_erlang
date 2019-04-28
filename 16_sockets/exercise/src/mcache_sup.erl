@@ -7,6 +7,7 @@
 -export([init/1]).
 
 start_link() ->
+    io:format("supervisor started~n"),
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init(_Args) ->
@@ -23,6 +24,14 @@ init(_Args) ->
             shutdown => 2000,
             type => worker, % worker | supervisor
             modules => [mcache_srv]
+        },
+        #{
+            id => mcache,
+            start => {mcache, start_link, []},
+            restart => permanent, % permanent | transient | temporary
+            shutdown => 2000,
+            type => worker, % worker | supervisor
+            modules => [mcache]
         }
     ],
 
