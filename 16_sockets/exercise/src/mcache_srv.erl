@@ -167,25 +167,24 @@ process_command(Command) ->
 
 
 find_command(Command, Fun, Keyword) ->
-    io:format("~p, ~p~n", [Keyword, Command]),
-    case lists:prefix(Keyword, Command) of
+    case lists:prefix(Keyword, string:lowercase(Command)) of
         true ->
             [_Operation, Parameters] = string:split(string:chomp(Command), " "),
             Fun(Parameters);
 
         _ ->
-            {nomatch, "UNKNOWN COMMAND"}
+            {nomatch, "UNKNOWN REQUEST"}
     end.
 
 
 set(Command) ->
     Fun = fun
+        ("") ->
+            {ok, "INVALID PARAMETERS"};
+
         (Parameters) ->
             [Key | Value] = string:split(Parameters, " "),
-            mcache:set(Key, Value);
-
-        (_Cmd) ->
-            {ok, "INVALID PARAMETERS"}
+            mcache:set(Key, Value)
     end,
 
     find_command(Command, Fun, "set").
@@ -217,40 +216,64 @@ gets(Command) ->
 
 
 delete(Command) ->
-    Fun = fun (_Parameters) ->
-        {ok, "DELETE"}
+    Fun = fun
+        ("") ->
+            {ok, "INVALID PARAMETERS"};
+
+        (Key) ->
+            mcache:delete(Key)
     end,
 
     find_command(Command, Fun, "delete").
 
 
 add(Command) ->
-    Fun = fun (_Parameters) ->
-        {ok, "ADD"}
+    Fun = fun
+        ("") ->
+            {ok, "INVALID PARAMETERS"};
+
+        (Parameters) ->
+            [Key | Value] = string:split(Parameters, " "),
+            mcache:add(Key, Value)
     end,
 
     find_command(Command, Fun, "add").
 
 
 replace(Command) ->
-    Fun = fun (_Parameters) ->
-        {ok, "REPLACE"}
+    Fun = fun
+        ("") ->
+            {ok, "INVALID PARAMETERS"};
+
+        (Parameters) ->
+            [Key | Value] = string:split(Parameters, " "),
+            mcache:replace(Key, Value)
     end,
 
     find_command(Command, Fun, "replace").
 
 
 append(Command) ->
-    Fun = fun (_Parameters) ->
-        {ok, "APPEND"}
+    Fun = fun
+        ("") ->
+            {ok, "INVALID PARAMETERS"};
+
+        (Parameters) ->
+            [Key | Value] = string:split(Parameters, " "),
+            mcache:append(Key, Value)
     end,
 
     find_command(Command, Fun, "append").
 
 
 prepend(Command) ->
-    Fun = fun (_Parameters) ->
-        {ok, "PREPEND"}
+    Fun = fun
+        ("") ->
+            {ok, "INVALID PARAMETERS"};
+
+        (Parameters) ->
+            [Key | Value] = string:split(Parameters, " "),
+            mcache:prepend(Key, Value)
     end,
 
     find_command(Command, Fun, "prepend").
