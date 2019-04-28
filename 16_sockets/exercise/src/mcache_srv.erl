@@ -123,7 +123,7 @@ handle_connection(ListenSocket, AcceptSocket) ->
 
         {ok, Message} ->
             io:format("~p Got message from client: ~p~n", [self(), Message]),
-            {ok, Reply} = process_command(get_command(Message)),
+            {ok, Reply} = process_command(Message),
             gen_tcp:send(AcceptSocket, [Reply]),
             handle_connection(ListenSocket, AcceptSocket);
 
@@ -133,16 +133,11 @@ handle_connection(ListenSocket, AcceptSocket) ->
     end.
 
 
-get_command(Message) ->
-    % remove \r\n from message
-    lists:sublist(Message, 1, length(Message) - 4).
-
-
 process_command(Command) ->
     Funcs = [
         fun set/1,
-        fun get/1,
         fun gets/1,
+        fun get/1,
         fun delete/1,
         fun add/1,
         fun replace/1,
@@ -177,36 +172,51 @@ find_command(Command, Fun, Keyword) ->
             {nomatch, "UNKNOWN COMMAND"};
 
         _ ->
-            Fun(Command)
+            [_Operation, Parameters] = string:split(string:chomp(Command), " "),
+            Fun(Parameters)
     end.
 
 
 set(Command) ->
-    Fun = fun (_Cmd) ->
-        {ok, "STORED"}
+    Fun = fun
+        (Parameters) ->
+            [Key | Value] = string:split(Parameters, " "),
+            mcache:set(Key, Value);
+
+        (_Cmd) ->
+            {ok, "INVALID PARAMETERS"}
     end,
 
     find_command(Command, Fun, "set").
 
 
 get(Command) ->
-    Fun = fun (_Cmd) ->
-        {ok, "VALUE"}
+    Fun = fun
+        ("") ->
+            {ok, "INVALID PARAMETERS"};
+
+        (Key) ->
+            mcache:get(Key)
     end,
 
     find_command(Command, Fun, "get").
 
 
 gets(Command) ->
-    Fun = fun (_Cmd) ->
-        {ok, "GETS"}
+    Fun = fun
+        ("") ->
+            {ok, "INVALID PARAMETERS"};
+
+        (Parameters) ->
+            Keys = string:split(Parameters, " ", all),
+            mcache:gets(Keys)
     end,
 
     find_command(Command, Fun, "gets").
 
 
 delete(Command) ->
-    Fun = fun (_Cmd) ->
+    Fun = fun (_Parameters) ->
         {ok, "DELETE"}
     end,
 
@@ -214,7 +224,7 @@ delete(Command) ->
 
 
 add(Command) ->
-    Fun = fun (_Cmd) ->
+    Fun = fun (_Parameters) ->
         {ok, "ADD"}
     end,
 
@@ -222,7 +232,7 @@ add(Command) ->
 
 
 replace(Command) ->
-    Fun = fun (_Cmd) ->
+    Fun = fun (_Parameters) ->
         {ok, "REPLACE"}
     end,
 
@@ -230,7 +240,7 @@ replace(Command) ->
 
 
 append(Command) ->
-    Fun = fun (_Cmd) ->
+    Fun = fun (_Parameters) ->
         {ok, "APPEND"}
     end,
 
@@ -238,7 +248,7 @@ append(Command) ->
 
 
 prepend(Command) ->
-    Fun = fun (_Cmd) ->
+    Fun = fun (_Parameters) ->
         {ok, "PREPEND"}
     end,
 
